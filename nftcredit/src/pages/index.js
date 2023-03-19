@@ -9,6 +9,8 @@ import React, { useEffect, useRef, useState }  from 'react'
 import { GaslessOnboarding} from "@gelatonetwork/gasless-onboarding"
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../constants/contractdata'
 import { GelatoRelay, SponsoredCallRequest } from "@gelatonetwork/relay-sdk";
+import transakSDK from "@transak/transak-sdk";
+
 
 
 export default function Home() {
@@ -27,6 +29,40 @@ export default function Home() {
     login();
     // connectWallet();
   },[])
+
+  const settings = {
+    apiKey: 'cf5868eb-a8bb-45c8-a2db-4309e5f8b412',  // Your API Key
+    environment: 'STAGING', // STAGING/PRODUCTION
+    defaultCryptoCurrency: 'ETH',
+    themeColor: '000000', // App theme color
+    hostURL: 'http://localhost:3000/',
+    widgetHeight: "700px",
+    widgetWidth: "500px",
+}
+
+function openTransak() {
+    const transak = new transakSDK(settings);
+
+    transak.init();
+
+    // To get all the events
+    transak.on(transak.ALL_EVENTS, (data) => {
+        console.log(data)
+    });
+
+    // This will trigger when the user closed the widget
+    transak.on(transak.EVENTS.TRANSAK_WIDGET_CLOSE, (eventData) => {
+        console.log(eventData);
+        transak.close();
+    });
+
+    // This will trigger when the user marks payment is made.
+    transak.on(transak.EVENTS.TRANSAK_ORDER_SUCCESSFUL, (orderData) => {
+        console.log(orderData);
+        window.alert("Payment Success")
+        transak.close();
+    });
+}
 
   const login = async() => {
     try{
@@ -138,6 +174,8 @@ export default function Home() {
           <input value={toAddress} onChange={(e) => setToAddress(e.target.value)} />
         </form>
         <button onClick={mintNFT}> Mint NFT</button>
+        <button onClick={() => openTransak()}>
+                    Buy Crypto</button>
         <p> Task Id {taskid}</p>
         {renderButton()}
       </main>
@@ -147,74 +185,3 @@ export default function Home() {
 }
 
 
-
-  // //
-  // const [walletConnected, setWalletConnected] = useState(false);
-  // const web3ModalRef = useRef();
-  // // ------------------
-
-  // const mintTest = async() =>{
-  //   try{
-  //     const signer = await getProviderOrSigner(true);
-
-  //     const nftContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-  //     const tx = await nftContract.mintNFT(toAddress, "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json");
-  //     // setLoading(true);
-  //     await tx.wait();
-  //     // setLoading(false);
-  //     window.alert("You have successfully minted a test NFT!")
-  //   }
-
-  //   catch(err){
-  //     console.log(err);
-  //   }
-  // }
-
-  // const connectWallet = async () => {
-  //   try {
-  //     // Get the provider from web3Modal, which in our case is MetaMask
-  //     // When used for the first time, it prompts the user to connect their wallet
-  //     await getProviderOrSigner();
-  //     setWalletConnected(true);
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
-
-  // const getProviderOrSigner = async (needSigner = false) => {
-  //   // Connect to Metamask
-  //   // Since we store `web3Modal` as a reference, we need to access the `current` value to get access to the underlying object
-  //   const provider = await web3ModalRef.current.connect();
-  //   const web3Provider = new providers.Web3Provider(provider);
-
-  //   // If user is not connected to the Goerli network, let them know and throw an error
-  //   const { chainId } = await web3Provider.getNetwork();
-  //   if (chainId !== 5) {
-  //     window.alert("Change the network to Goerli");
-  //     throw new Error("Change network to Goerli");
-  //   }
-
-  //   if (needSigner) {
-  //     const signer = web3Provider.getSigner();
-  //     return signer;
-  //   }
-  //   return web3Provider;
-  // };
-
-  // // useEffect(() => {
-  // //   // if wallet is not connected, create a new instance of Web3Modal and connect the MetaMask wallet
-  // //   if (!walletConnected) {
-  // //     // Assign the Web3Modal class to the reference object by setting it's `current` value
-  // //     // The `current` value is persisted throughout as long as this page is open
-  // //     web3ModalRef.current = new Web3Modal({
-  // //       network: "PolygonMumbai",
-  // //       providerOptions: {},
-  // //       disableInjectedProvider: false,
-  // //     });
-  // //     connectWallet();
-  // //   }
-  // // }, [walletConnected]);
-
-  // // -------------------
-  
