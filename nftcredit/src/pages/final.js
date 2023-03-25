@@ -1,4 +1,4 @@
-import Home from './temp'
+import Home from './index'
 import { ContextProvider } from './Context'
 
 export default function Final(){
