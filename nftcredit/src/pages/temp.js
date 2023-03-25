@@ -7,6 +7,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { ContextProvider } from './Context';
 import {Context} from "./Context"
 
+import { Login} from "../Components/login"
+
 import {
   AppBar,
 Toolbar,
@@ -31,7 +33,7 @@ import styles from '@/styles/Home.module.css'
 import React, { useContext, useEffect, useRef, useState }  from 'react'
 // import Web3Modal from "web3modal";
 
-import { GaslessOnboarding} from "@gelatonetwork/gasless-onboarding"
+
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../constants/contractdata'
 import { GelatoRelay } from "@gelatonetwork/relay-sdk";
 
@@ -40,9 +42,7 @@ import { GelatoRelay } from "@gelatonetwork/relay-sdk";
 export default function Home() {
 
   const [walletAddress, setWalletAddress] = useState();
-  const [tokens, setTokens] = useState([]);
-  const [gobMethod, setGOBMethod] = useState(null);
-  const [gw, setGW] = useState();
+  
   // const [loading, setLoading] = useState(false);
   const [toAddress, setToAddress] = useState("");
   const [taskId, setTaskId] = useState("");
@@ -51,7 +51,7 @@ export default function Home() {
   const [web3AuthProvider, setWeb3AuthProvider] = useState(null)
   const [balanceDialog, setBalanceDialog] = useState(false);
   const [balance, setBalance] = useState(0);
-  const {loading, setLoading} = useContext(Context);
+  const {loading, setLoading, gobMethod, gw, tokens} = useContext(Context);
  
   
 
@@ -67,6 +67,7 @@ export default function Home() {
     setAnchorElement(false);
     logout();
   }
+
 
 
   const initOnramp = async () => {
@@ -97,50 +98,10 @@ export default function Home() {
   }
   
   useEffect(()=>{
-    login();
+    <Login />
   }, [])
 
-  const login = async() => {
-    
-    try{
-      setLoading(true);
-      const gaslessWalletConfig = { apiKey: process.env.NEXT_PUBLIC_GASLESSWALLET_KEY};
-      const loginConfig = {
-        domains: ["http://localhost:3000/"],
-        chain : {
-          id: 80001,
-          rpcUrl: "https://wiser-alien-morning.matic-testnet.discover.quiknode.pro/c2f6cfc05517853e094ad7ea47188326625f20b5/",
-        },
-        openLogin: {
-          redirectUrl: `http://localhost:3000/`,
-        },
-      };
-      const gaslessOnboarding = new GaslessOnboarding(
-        loginConfig,
-        gaslessWalletConfig
-      );
-      
-      await gaslessOnboarding.init();
-      const web3AP = await gaslessOnboarding.login();
-      setWeb3AuthProvider(web3AP);
-      setLoading(false);
-      console.log("Web3 Auth Provider", web3AP);
-      setGOBMethod(gaslessOnboarding);
-
-      const gaslessWallet = gaslessOnboarding.getGaslessWallet();
-      setGW(gaslessWallet);
-      console.log("Wallet is", gaslessWallet)
-
-      const address = gaslessWallet.getAddress();
-      setWalletAddress(address);
-
-      const result = await fetch(`https://api.covalenthq.com/v1/80001/address/${address}/balances_v2/?key=${process.env.NEXT_PUBLIC_COVALENT_APIKEY}`);
-      const balance = await result.json();
-      setTokens(balance.data.items);
-    } catch (err){
-      console.error(err);
-    }
-  }
+  
 
   const renderAlert = () => {
     switch(taskStatus){
@@ -247,7 +208,7 @@ export default function Home() {
 
   const renderButton = () => {
     if(!walletAddress){
-      return <Button color="inherit" onClick={login}> Login </Button>
+      return <Button color="inherit" onClick={Login()}> Login </Button>
     }
     else{
         console.log("logged in", walletAddress);
