@@ -54,7 +54,7 @@ import React, { useEffect, useRef, useState }  from 'react'
 // import Web3Modal from "web3modal";
 
 import { GaslessOnboarding} from "@gelatonetwork/gasless-onboarding"
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../constants/contractdata'
+import { CONTRACT_ABI, CONTRACT_ADDRESS, USDC_CONTRACT_ABI, USDC_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ABI } from '../constants/contractdata'
 import { GelatoRelay, SponsoredCallRequest } from "@gelatonetwork/relay-sdk";
 
 
@@ -254,22 +254,29 @@ export default function Home() {
 
   const mintNFT = async() => {
     try{
-      console.log("in mint")
       // setLoading(true);
       // const relay = new GelatoRelay();
-      // let iface = new ethers.utils.Interface(CONTRACT_ABI);
+      // let iface = new ethers.utils.Interface(USDC_NFT_CONTRACT_ABI);
       // let tokenURI = "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json"
       // let recipient = toAddress;
       // console.log(recipient, tokenURI);
-      
+
+      const provider = new ethers.providers.Web3Provider(web3AuthProvider);
+      const signer = await provider.getSigner();
+      const temp = new Contract(USDC_CONTRACT_ADDRESS, USDC_CONTRACT_ABI, signer);
+      let appr = await temp.approve(CONTRACT_ADDRESS, 5000);
+      let bal = await temp.balanceOf(walletAddress);
+      console.log("Balance is", bal.toNumber());
       // let tx = iface.encodeFunctionData("mintNFT", [ recipient, tokenURI ])
+  
+
       
       // console.log(tx)
       // console.log(gw);
       // const temp = await gw.sponsorTransaction(
-      //   CONTRACT_ADDRESS,
+        // USDC_NFT_CONTRACT_ADDRESS,
       //   tx,
-      //   ethers.utils.parseEther("0.001")
+        // ethers.utils.parseEther("0.001")
       // );
       // console.log(temp)
 
