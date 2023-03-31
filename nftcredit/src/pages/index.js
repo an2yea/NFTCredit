@@ -40,8 +40,9 @@ import React, { useEffect, useRef, useState }  from 'react'
 // import Web3Modal from "web3modal";
 
 import { GaslessOnboarding} from "@gelatonetwork/gasless-onboarding"
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../constants/contractdata'
+import { CONTRACT_ABI, CONTRACT_ADDRESS, USDC_CONTRACT_ABI, USDC_NFT_CONTRACT_ABI, USDC_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ADDRESS } from '../constants/contractdata'
 import { GelatoRelay, SponsoredCallRequest } from "@gelatonetwork/relay-sdk";
+const relay = new GelatoRelay();
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
@@ -57,12 +58,16 @@ export default function Home() {
   const [toAddress, setToAddress] = useState("");
   const [taskId, setTaskId] = useState("");
   const [taskStatus, setTaskStatus] = useState("");
+  // const [usdcTaskStatus, setUsdcTaskStatus]
+  const [approvingUsdc, setApprovingUsdc] = useState(false)
   const [anchorElement, setAnchorElement] = useState(null);
   const [web3AuthProvider, setWeb3AuthProvider] = useState(null)
   const [balanceDialog, setBalanceDialog] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
+  const [onrampLoading, setOnrampLoading] = useState(false)
+  const [minted, setMinted] = useState(false)
   const isLargerThan600 = useMediaQuery('(min-width: 600px)')
   
  
@@ -112,6 +117,13 @@ export default function Home() {
             console.log("State access inside useeffect", taskStatus)
             if(task.task.taskState == 'Cancelled' || task.task.taskState == 'ExecSuccess'){
               clearInterval(call);
+              if(approvingUsdc){
+                setApprovingUsdc(false);
+                mintNFT();
+              }
+              else{
+                setMinted(true)
+              }
               if(task.task.taskState == 'ExecSuccess'){
                 fetchNfts();
               }
@@ -152,8 +164,15 @@ export default function Home() {
       element: '#stripe-root',
       // sessionId: 'cos_1Mei3cKSn9ArdBimJhkCt1XC', // Optional, if you want to use a specific created session
       events: {
-        onLoaded: () => console.log('Loaded'),
-        onPaymentSuccessful: () => console.log('Payment successful'),
+        onLoaded: () => {console.log('Loaded')
+      console.log('Hi')
+      setOnrampLoading(false)
+    },
+        onPaymentSuccessful: () => {
+          console.log('payment success')
+          document.querySelector('#stripe-root').style.display = 'none'    
+          approveUSDC();
+        },
         onPaymentError: () => console.log('Payment failed'),
         onPaymentProcessing: () => console.log('Payment processing')
       }
@@ -172,7 +191,7 @@ export default function Home() {
         console.log(CONTRACT_ABI);
         console.log(CONTRACT_ADDRESS)
         console.log(signer)
-        const nftContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        const nftContract = new Contract(USDC_NFT_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ABI, signer);
 
         let bal = await nftContract.balanceOf(walletAddress);
         console.log('Balance is', bal.toNumber());
@@ -203,7 +222,7 @@ export default function Home() {
         domains: [window.location.origin],
         chain : {
           id: 80001,
-          rpcUrl: "https://wiser-alien-morning.matic-testnet.discover.quiknode.pro/c2f6cfc05517853e094ad7ea47188326625f20b5/",
+          rpcUrl: "https://wiser-alien-morning.matic-testnet.discover.quiknode.pro/c2f6cfc05517853e094ad7ea47188326625f20b5/"
         },
         openLogin: {
           redirectUrl: [window.location.origin],
@@ -251,7 +270,7 @@ export default function Home() {
       case 'WaitingForConfirmation':
         return <Alert onClose={handleClose} severity='info'> The Request is being processed (waiting for confirmation)</Alert>
       case 'ExecSuccess':
-        return <Alert onClose={handleClose}  severity='success'> The Request was successful </Alert>
+        return <Alert onClose={handleClose}  severity='success'> The Request was successful {minted?'NFT minted!':''} </Alert>
       case 'Cancelled':
         return <Alert onClose={handleClose}  severity='error'> The Request was Cancelled </Alert>
       case 'ExecReverted':
@@ -260,31 +279,88 @@ export default function Home() {
     }
   }
   
-  
-
   const mintNFT = async() => {
     try{
+      
       console.log("in mint");
       console.log(toAddress);
       setLoading(true);
-      const relay = new GelatoRelay();
-      let iface = new ethers.utils.Interface(CONTRACT_ABI);
-      let tokenURI = "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json";
-      let recipient = toAddress 
-      if(!recipient){
-        recipient = walletAddress;
-      }
-      console.log(recipient, tokenURI);
+      // const relay = new GelatoRelay();
+      // const provider = new ethers.providers.Web3Provider(web3AuthProvider);
+      // const signer = provider.getSigner();
+
+      // const contract = new ethers.Contract(USDC_CONTRACT_ADDRESS, USDC_CONTRACT_ABI, signer);
+      // await contract.approve(USDC_NFT_CONTRACT_ADDRESS, 5000)
+      // console.log('done')
+      // setLoading(false)
       
+      // const usdcNftContract = new ethers.Contract(USDC_NFT_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ABI, signer);
+      let tokenURI = "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json"
+      let recipient = toAddress
+      if(!toAddress)recipient = walletAddress
+      // let res = await usdcNftContract.mintNFT(walletAddress || walletAddress, tokenURI)
+      // console.log(res)
+      // let iface = new ethers.utils.Interface(USDC_CONTRACT_ABI);
+      let iface = new ethers.utils.Interface(USDC_NFT_CONTRACT_ABI);
+
+      // console.log(recipient, tokenURI);
+      
+      // let tx = iface.encodeFunctionData("approve", [ USDC_NFT_CONTRACT_ADDRESS, 50000 ])
       let tx = iface.encodeFunctionData("mintNFT", [ recipient, tokenURI ])
       
       console.log(tx)
       console.log(gw);
-      const temp = await gw.sponsorTransaction(
-        CONTRACT_ADDRESS,
-        tx
-      );
 
+      // const temp = await gw.sponsorTransaction(
+      //   USDC_CONTRACT_ADDRESS,
+      //   tx,
+      // );
+      const temp = await gw.sponsorTransaction(
+        USDC_NFT_CONTRACT_ADDRESS,
+        tx,
+      );
+      console.log(temp)
+      // const request = {
+      //   chainId: 80001,
+      //   target: USDC_NFT_CONTRACT_ADDRESS,
+      //   data: data,
+      // };
+      
+      // Without a specific API key, the relay request will fail! 
+      // Go to https://relay.gelato.network to get a testnet API key with 1Balance.
+      // Send the relay request using Gelato Relay!
+      // const relayResponse = await relay.sponsoredCall(request, process.env.NEXT_PUBLIC_GASLESSWALLET_KEY);
+
+      
+      // console.log(relayResponse)
+      setTaskId(temp.taskId, console.log(taskId));
+      setLoading(false);
+
+      return <> Task Id : {taskId}</>
+      
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const approveUSDC = async() => {
+    try{
+      setApprovingUsdc(true);
+      setMinted(false)
+      console.log("in usdc");
+      // console.log(toAddress);
+      setLoading(true);
+      let iface = new ethers.utils.Interface(USDC_CONTRACT_ABI);
+      let tx = iface.encodeFunctionData("approve", [ USDC_NFT_CONTRACT_ADDRESS, 50000 ])
+      
+      console.log(tx)
+      console.log(gw);
+
+      const temp = await gw.sponsorTransaction(
+        USDC_CONTRACT_ADDRESS,
+        tx,
+      );
+      console.log(temp)
       setTaskId(temp.taskId, console.log(taskId));
       setLoading(false);
 
@@ -321,14 +397,21 @@ export default function Home() {
   const renderForm = () => {
     if(walletAddress) {
       return <Stack alignItems='center' spacing={2}>
+        <div id = 'stripe-root'></div>
+        {onrampLoading?<div><CircularProgress color="inherit" padding = 'auto' margin = 'auto' />
+          <p>Loading onramp...</p></div>:<></>}
           <TextField label="Address to Mint NFT On" sx={{mt:2, mb:2}} width="100%" variant="outlined" value={toAddress} onChange={(e) => setToAddress(e.target.value)} />
+          <img src ="images/pikachu.jpeg" height = '250px' width = '300px' alt = 'pikachu' />
+          
         <Button
               type="submit"
               variant="contained"
               sx={{ mt: 2, mb: 2 }} style={{backgroundColor:"#45A29E", color:"white", width:'100%'}} onClick={() =>{
                 if(toAddress=="") setToAddress(walletAddress);
-                mintNFT();
-              }}> Mint NFT</Button>
+                // approveUSDC();
+                setOnrampLoading(true);
+                initOnramp();
+              }}> Buy this NFT for 1$</Button>
           <Typography variant='subtitle'> Leave the field empty to mint on your account </Typography>
 
         </Stack>
@@ -353,51 +436,6 @@ export default function Home() {
 
     }
   ]
-
-  const renderListing = () => {
-    if(!showHistory){
-      return <Slide direction="up" in={!showHistory} mountOnEnter unmountOnExit><Grid item xs={12} md={8} width="100%" maxHeight="600px" alignItems='center' justifyItems='center'>
-      <Card sx={{mt:2, mb:4, flexDirection:'col', alignItems:'center', justifyItems:'center'}} position="fixed" styles={{Color:"black"}} padding='4%' margin='4%'>
-      <Stack alignItems='center' spacing={2} padding='4%' >
-        <h2> NFTs to Check Out! </h2>
-        <Grid container spacing={2} maxHeight='600px' alignItems='center' id="history" overflow='auto' > 
-            {listing.map(({name, image, price}) => (
-              <Grid key='1' item xs={12} sm={6} md={4} padding='0.5%'>
-              <Card sx={{ width:'inherit' ,borderColor:'rgba(253,193,104,1)', borderWidth:'2px', borderStyle:'solid' }}>
-                <CardActionArea>
-                <CardMedia
-                    component="img"
-                    height="200"
-                    image={image}
-                    alt={name}
-                  />
-                  <CardContent sx={{backgroundColor:'rgba(251,128,128,1)', color:'white'}}>
-                    <Typography gutterBottom variant="h5" component="div">
-                      {name}
-                    </Typography>
-
-                    <Typography variant="body2" color="#1f2833">
-                      {price}
-                    </Typography>
-                    <Button
-                    type="submit"
-                    variant="contained"
-                  sx={{ mt: 2, mb: 2 }} style={{backgroundColor:"#45A29E", color:"white", width:'100%'}} onClick={() =>{
-                if(toAddress=="") setToAddress(walletAddress);
-                mintNFT();
-              }}> Mint {name} </Button>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-              </ Grid>
-            ))}
-        </Grid>
-        </Stack>
-        </Card>
-        </Grid>
-        </Slide >
-    }
-  }
 
   const renderHistory = () => {
     if(!showHistory){
@@ -483,7 +521,6 @@ export default function Home() {
       
       <Grid container flexDirection='column' alignItems='center' spacing={4} paddingLeft='2%' paddingRight='2%' >
       {renderHistory()}
-      {renderListing()}
       {showHistory && <Slide direction="up" in={showHistory} mountOnEnter unmountOnExit><Grid item xs={12} md={8} width="100%" maxHeight="600px" alignItems='center' justifyItems='center'>
       <Card sx={{mt:2, mb:4, flexDirection:'col', alignItems:'center', justifyItems:'center'}} position="fixed" styles={{Color:"black"}} padding='4%' paddingTop='4%' margin='4%'>
       <Stack alignItems='center' spacing={2} padding='4%' >
@@ -528,4 +565,4 @@ export default function Home() {
     </Box>
     </div>
   )
-            }
+}
