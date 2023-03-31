@@ -40,8 +40,9 @@ import React, { useEffect, useRef, useState }  from 'react'
 // import Web3Modal from "web3modal";
 
 import { GaslessOnboarding} from "@gelatonetwork/gasless-onboarding"
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../constants/contractdata'
+import { CONTRACT_ABI, CONTRACT_ADDRESS, USDC_CONTRACT_ABI, USDC_NFT_CONTRACT_ABI, USDC_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ADDRESS } from '../constants/contractdata'
 import { GelatoRelay, SponsoredCallRequest } from "@gelatonetwork/relay-sdk";
+const relay = new GelatoRelay();
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
@@ -57,6 +58,8 @@ export default function Home() {
   const [toAddress, setToAddress] = useState("");
   const [taskId, setTaskId] = useState("");
   const [taskStatus, setTaskStatus] = useState("");
+  // const [usdcTaskStatus, setUsdcTaskStatus]
+  const [approvingUsdc, setApprovingUsdc] = useState(false)
   const [anchorElement, setAnchorElement] = useState(null);
   const [web3AuthProvider, setWeb3AuthProvider] = useState(null)
   const [balanceDialog, setBalanceDialog] = useState(false);
@@ -112,6 +115,10 @@ export default function Home() {
             console.log("State access inside useeffect", taskStatus)
             if(task.task.taskState == 'Cancelled' || task.task.taskState == 'ExecSuccess'){
               clearInterval(call);
+              if(approvingUsdc){
+                setApprovingUsdc(false);
+                mintNFT();
+              }
               if(task.task.taskState == 'ExecSuccess'){
                 fetchNfts();
               }
@@ -172,7 +179,7 @@ export default function Home() {
         console.log(CONTRACT_ABI);
         console.log(CONTRACT_ADDRESS)
         console.log(signer)
-        const nftContract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        const nftContract = new Contract(USDC_NFT_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ABI, signer);
 
         let bal = await nftContract.balanceOf(walletAddress);
         console.log('Balance is', bal.toNumber());
@@ -203,7 +210,7 @@ export default function Home() {
         domains: [window.location.origin],
         chain : {
           id: 80001,
-          rpcUrl: "https://wiser-alien-morning.matic-testnet.discover.quiknode.pro/c2f6cfc05517853e094ad7ea47188326625f20b5/",
+          rpcUrl: "https://wiser-alien-morning.matic-testnet.discover.quiknode.pro/c2f6cfc05517853e094ad7ea47188326625f20b5/"
         },
         openLogin: {
           redirectUrl: [window.location.origin],
@@ -260,29 +267,87 @@ export default function Home() {
     }
   }
   
-  
-
   const mintNFT = async() => {
     try{
+      
       console.log("in mint");
       console.log(toAddress);
       setLoading(true);
-      const relay = new GelatoRelay();
-      let iface = new ethers.utils.Interface(CONTRACT_ABI);
-      let tokenURI = "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json"
-      let recipient = toAddress || walletAddress;
-      console.log(recipient, tokenURI);
+      // const relay = new GelatoRelay();
+      // const provider = new ethers.providers.Web3Provider(web3AuthProvider);
+      // const signer = provider.getSigner();
+
+      // const contract = new ethers.Contract(USDC_CONTRACT_ADDRESS, USDC_CONTRACT_ABI, signer);
+      // await contract.approve(USDC_NFT_CONTRACT_ADDRESS, 5000)
+      // console.log('done')
+      // setLoading(false)
       
+      // const usdcNftContract = new ethers.Contract(USDC_NFT_CONTRACT_ADDRESS, USDC_NFT_CONTRACT_ABI, signer);
+      let tokenURI = "ipfs://bafyreidrt5utdvnwonctnojcese7n2lzi4pkcvvtz7mw2ptijbtnb5sfya/metadata.json"
+      let recipient = toAddress
+      if(!toAddress)recipient = walletAddress
+      // let res = await usdcNftContract.mintNFT(walletAddress || walletAddress, tokenURI)
+      // console.log(res)
+      // let iface = new ethers.utils.Interface(USDC_CONTRACT_ABI);
+      let iface = new ethers.utils.Interface(USDC_NFT_CONTRACT_ABI);
+
+      // console.log(recipient, tokenURI);
+      
+      // let tx = iface.encodeFunctionData("approve", [ USDC_NFT_CONTRACT_ADDRESS, 50000 ])
       let tx = iface.encodeFunctionData("mintNFT", [ recipient, tokenURI ])
       
       console.log(tx)
       console.log(gw);
-      const temp = await gw.sponsorTransaction(
-        CONTRACT_ADDRESS,
-        tx,
-        ethers.utils.parseEther("0.001")
-      );
 
+      // const temp = await gw.sponsorTransaction(
+      //   USDC_CONTRACT_ADDRESS,
+      //   tx,
+      // );
+      const temp = await gw.sponsorTransaction(
+        USDC_NFT_CONTRACT_ADDRESS,
+        tx,
+      );
+      console.log(temp)
+      // const request = {
+      //   chainId: 80001,
+      //   target: USDC_NFT_CONTRACT_ADDRESS,
+      //   data: data,
+      // };
+      
+      // Without a specific API key, the relay request will fail! 
+      // Go to https://relay.gelato.network to get a testnet API key with 1Balance.
+      // Send the relay request using Gelato Relay!
+      // const relayResponse = await relay.sponsoredCall(request, process.env.NEXT_PUBLIC_GASLESSWALLET_KEY);
+
+      
+      // console.log(relayResponse)
+      setTaskId(temp.taskId, console.log(taskId));
+      setLoading(false);
+
+      return <> Task Id : {taskId}</>
+      
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const approveUSDC = async() => {
+    try{
+      setApprovingUsdc(true);
+      console.log("in usdc");
+      // console.log(toAddress);
+      setLoading(true);
+      let iface = new ethers.utils.Interface(USDC_CONTRACT_ABI);
+      let tx = iface.encodeFunctionData("approve", [ USDC_NFT_CONTRACT_ADDRESS, 50000 ])
+      
+      console.log(tx)
+      console.log(gw);
+
+      const temp = await gw.sponsorTransaction(
+        USDC_CONTRACT_ADDRESS,
+        tx,
+      );
+      console.log(temp)
       setTaskId(temp.taskId, console.log(taskId));
       setLoading(false);
 
@@ -309,7 +374,7 @@ export default function Home() {
               variant="contained"
               sx={{ mt: 2, mb: 2 }} style={{backgroundColor:"#45A29E", color:"white", width:'100%'}} onClick={() =>{
                 if(toAddress=="") setToAddress(walletAddress);
-                mintNFT();
+                approveUSDC();
               }}> Mint NFT</Button>
           <Typography variant='subtitle'> Leave the field empty to mint on your account </Typography>
 
@@ -374,6 +439,7 @@ export default function Home() {
           {isLargerThan600 && <Typography variant='h6' component='div' sx={{ flexGrow: 1 }}>
             &nbsp; asyncNFT
         </Typography>}
+        <div id = 'stripe-root'></div>
         <Stack direction='row' spacing={2}>
           {renderButton()}
         </Stack>
@@ -461,4 +527,3 @@ export default function Home() {
     </div>
   )
 }
-
