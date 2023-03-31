@@ -66,6 +66,8 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [showUpdate, setShowUpdate] = useState(false);
+  const [onrampLoading, setOnrampLoading] = useState(false)
+  const [minted, setMinted] = useState(false)
   const isLargerThan600 = useMediaQuery('(min-width: 600px)')
   
  
@@ -119,6 +121,9 @@ export default function Home() {
                 setApprovingUsdc(false);
                 mintNFT();
               }
+              else{
+                setMinted(true)
+              }
               if(task.task.taskState == 'ExecSuccess'){
                 fetchNfts();
               }
@@ -159,8 +164,15 @@ export default function Home() {
       element: '#stripe-root',
       // sessionId: 'cos_1Mei3cKSn9ArdBimJhkCt1XC', // Optional, if you want to use a specific created session
       events: {
-        onLoaded: () => console.log('Loaded'),
-        onPaymentSuccessful: () => console.log('Payment successful'),
+        onLoaded: () => {console.log('Loaded')
+      console.log('Hi')
+      setOnrampLoading(false)
+    },
+        onPaymentSuccessful: () => {
+          console.log('payment success')
+          document.querySelector('#stripe-root').style.display = 'none'    
+          approveUSDC();
+        },
         onPaymentError: () => console.log('Payment failed'),
         onPaymentProcessing: () => console.log('Payment processing')
       }
@@ -258,7 +270,7 @@ export default function Home() {
       case 'WaitingForConfirmation':
         return <Alert onClose={handleClose} severity='info'> The Request is being processed (waiting for confirmation)</Alert>
       case 'ExecSuccess':
-        return <Alert onClose={handleClose}  severity='success'> The Request was successful </Alert>
+        return <Alert onClose={handleClose}  severity='success'> The Request was successful {minted?'NFT minted!':''} </Alert>
       case 'Cancelled':
         return <Alert onClose={handleClose}  severity='error'> The Request was Cancelled </Alert>
       case 'ExecReverted':
@@ -334,6 +346,7 @@ export default function Home() {
   const approveUSDC = async() => {
     try{
       setApprovingUsdc(true);
+      setMinted(false)
       console.log("in usdc");
       // console.log(toAddress);
       setLoading(true);
@@ -365,22 +378,6 @@ export default function Home() {
     setLoading(false);
     setMynfts([]);
   }
-  const renderForm = () => {
-    if(walletAddress) {
-      return <Stack alignItems='center' spacing={2}>
-          <TextField label="Address to Mint NFT On" sx={{mt:2, mb:2}} width="100%" variant="outlined" value={toAddress} onChange={(e) => setToAddress(e.target.value)} />
-        <Button
-              type="submit"
-              variant="contained"
-              sx={{ mt: 2, mb: 2 }} style={{backgroundColor:"#45A29E", color:"white", width:'100%'}} onClick={() =>{
-                if(toAddress=="") setToAddress(walletAddress);
-                approveUSDC();
-              }}> Mint NFT</Button>
-          <Typography variant='subtitle'> Leave the field empty to mint on your account </Typography>
-
-        </Stack>
-    }
-  }
 
   const renderButton = () => {
     if(!walletAddress){
@@ -396,6 +393,49 @@ export default function Home() {
         setShowAlert(true);
     }}/></Tooltip> </Button>} 
   }
+
+  const renderForm = () => {
+    if(walletAddress) {
+      return <Stack alignItems='center' spacing={2}>
+        <div id = 'stripe-root'></div>
+        {onrampLoading?<div><CircularProgress color="inherit" padding = 'auto' margin = 'auto' />
+          <p>Loading onramp...</p></div>:<></>}
+          <TextField label="Address to Mint NFT On" sx={{mt:2, mb:2}} width="100%" variant="outlined" value={toAddress} onChange={(e) => setToAddress(e.target.value)} />
+          <img src ="images/pikachu.jpeg" height = '250px' width = '300px' alt = 'pikachu' />
+          
+        <Button
+              type="submit"
+              variant="contained"
+              sx={{ mt: 2, mb: 2 }} style={{backgroundColor:"#45A29E", color:"white", width:'100%'}} onClick={() =>{
+                if(toAddress=="") setToAddress(walletAddress);
+                // approveUSDC();
+                setOnrampLoading(true);
+                initOnramp();
+              }}> Buy this NFT for 1$</Button>
+          <Typography variant='subtitle'> Leave the field empty to mint on your account </Typography>
+
+        </Stack>
+    }
+  }
+
+  const listing = [
+    {
+      name: 'Pikachu',
+      image: '/images/pikachu.jpeg',
+      price: 'Free'
+    },
+    {
+      name:'Arceus',
+      image:'/images/arceus.png',
+      price: 'Free'
+    },
+    {
+      name:'Bulbsaur',
+      image:'/images/bulbasaur.jpeg',
+      price: 'Free'
+
+    }
+  ]
 
   const renderHistory = () => {
     if(!showHistory){
@@ -422,7 +462,7 @@ export default function Home() {
         <title> asyncNFT </title>
         <meta name="description" content="Buy NFTs seamlessly with Account Abstraction" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/images/logo.svg" />
+        <link rel="icon" href="images/logo.svg" />
       </Head>
       <Box sx={{mt:3, flexDirection: 'row', justifyContent:'center', alignItems:'center'}}>
       <Snackbar anchorOrigin={{vertical: 'top', horizontal:'center'}} open={showAlert} autoHideDuration={3000} onClose={handleClose}>
@@ -439,7 +479,6 @@ export default function Home() {
           {isLargerThan600 && <Typography variant='h6' component='div' sx={{ flexGrow: 1 }}>
             &nbsp; asyncNFT
         </Typography>}
-        <div id = 'stripe-root'></div>
         <Stack direction='row' spacing={2}>
           {renderButton()}
         </Stack>
